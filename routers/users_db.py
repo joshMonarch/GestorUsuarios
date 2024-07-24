@@ -7,7 +7,7 @@ from bson import ObjectId
 
 router = APIRouter(prefix='/userdb',
                    tags=["userdb"],
-                   responses={status.HTTP_404_NOT_FOUND: {"message": "No encontrado"}})
+                   responses={status.HTTP_404_NOT_FOUND: {"message": "Not found"}})
 
 @router.get('/', response_model=list[User])
 async def get_users():
@@ -27,15 +27,15 @@ async def get_user(id: str):
 async def create_user(user: User):
 
     if isinstance(search_user("email", user.email), User):
-        raise HTTPException(status_code=404,detail="El usuario ya existe")
+        raise HTTPException(status_code=404,detail="User does not exist")
 
     
     user_dict = dict(user)
     del user_dict["id"]
 
-    # Se inserta el valor y se devuelde el id
+    # Insert value and return the id
     id = db_client.local.users.insert_one(user_dict).inserted_id
-    # Comprobamos la inserción devolviendo un registro por la id.
+    # Check the insertion returning the record by id.
     new_user = user_schema(db_client.local.users.find_one({"_id":id}))
 
     return User(**new_user)
@@ -47,12 +47,12 @@ async def update_user(user: User):
     del user_dict["id"]
 
     try:
-        # Actualiza un objeto completo, si lo encuentra.
+        # Update a complete object, if found.
         db_client.local.users.find_one_and_replace(
             {"_id": ObjectId(user.id)},
             user_dict)
     except: 
-        return {"error": "No se ha actualizado"}
+        return {"error": "Update fail"}
     
     return search_user("_id", ObjectId(user.id))
         
@@ -63,7 +63,7 @@ async def delete_user(id: str):
     found = db_client.local.users.find_one_and_delete({"_id": ObjectId(id)})
 
     if not found:
-        return {"error": "No se ha encontrado el usuario"}
+        return {"error": "User not found"}
     return "Eliminado"
         
     
@@ -73,6 +73,6 @@ def search_user(field: str, key: str):
         user = user_schema(db_client.local.users.find_one({field: key}))
         return User(**user)
     except:
-        return {"error": "Usuario no encontrado"}
+        return {"error": "User not found"}
     
     

@@ -1,18 +1,20 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 """
-OAuth2PasswordBearer:      Clase que gestionará la autentificación (usuario y contraseña).
-OAuth2PasswordRequestForm: Clase que define la forma en la que se envían nuestros 
-                           criterios de autentificación al backend.
+OAuth2PasswordBearer: Class that handles authentication 
+                      (username and password).
+OAuth2PasswordRequestForm: Class that defines how our 
+                           authentication credentials 
+                           are sent to the backend.
 """
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 
 router = APIRouter(tags=["OAuth2"])
 
 """
-Criterio de autentificación.
-Recibe como parámetro la URL donde el cliente debe 
-enviar las credencales para obterner el token de acceso 
+Authentication criterion.
+It receives the URL where the client must send the 
+credentials as a parameter to obtain the access token.
 """
 oauth2 = OAuth2PasswordBearer(tokenUrl="/login/oauth2")
 
@@ -43,8 +45,8 @@ users_db = {
 }
 
 """
-Función que retorna el usuario de la Base de datos
-que coincide que el nombre de usuario introducido
+Funtion which returns the user from the db as long as it 
+matches the provided username.
 """
 def search_user_db(username: str):
     if username in users_db:
@@ -55,8 +57,8 @@ def search_user(username: str):
         return User(**users_db[username])
 
 """
-Función que se encarga de obtener el token de autentificación obtenido
-de la Url de `tokenUrl` de la clase OAuth2PasswordBearer
+Function responsible for obtaining the authentication token
+from the tokenUrl of the OAuth2PasswordBearer class.
 """
 async def current_user(token: str = Depends(oauth2)):
     user = search_user_db(token)
@@ -74,47 +76,46 @@ async def current_user(token: str = Depends(oauth2)):
     return user
 
 """
-Función POST que se encargará de enviar las credenciales.
-Depends(): Intenta encontrar una manera de aportar la
-           dependencia requerida (OAuth2PasswordRequestForm).
-           Se encarga de extraer este objeto del request body,
-           lugar donde se encuentran las credenciales.
+POST function responsible for sending the credentials.
+Depends(): Attempts to find a way to provide the required
+           dependency (OAuth2PasswordRequestForm). It extracts 
+           this object from the request body, where the 
+           credentials are located.
 """
 @router.post("/login/oauth2")
 async def login(form: OAuth2PasswordRequestForm= Depends()):
     user_db = users_db.get(form.username)
 
-    # Comprobamos que el usuario se encuentra en la BD.
+    # Check if the user is in the db
     if not user_db:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             details='El usuario no es correcto')
     
     user = search_user_db(form.username)
-    # Comprobamos que la contraseña e corresponda con la guardada en la BD.
+    # Check if the password matches the one saved in the db
     if not form.password == user.password:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="La contraseña no es correcta")
     
-    # El token debería estar encriptado, que solo conozca el backend.
+    # The token should be encrypted, only known by the backend
     return {"access_token": user.username, "token_type": "bearer"}
 
 """
-Función que me revela cuál es mi usuario
-Depends(current_user): Esta fucnión depende de que el usuario
-                       esté autentificado.
+Fucntion that shows which is my user.
+Depends(current_user): It depends on the user being authenticated.
 """
 @router.get("/users/oauth2/me")
 async def me(user: User= Depends(current_user)):
     return user
 
 """
-En terminos generales:
-1. Importamos las clases esenciales (passwordBearer y passwordRequestForm)
-2. Definimos una función de login que estará pendiente de recibir las 
-   credenciales del request body y validarlas.
-3. Definimos una función que nos devuelva el usuario logeado que, a su vez,
-   depende de otra función (current_user) que valide el token creado a
-   partir de las credenciales obtenidas. 
+To sum up:
+1. Import esenssial clases (passwordBearer y passwordRequestForm).
+2. Define a login function pending to receive the credentials from the 
+   request body and validate them.
+3. Define a function responisble for returning the logged user which, 
+   at the same time, depends on another function (current_user) that 
+   validates the token provided by the obteined credentials.
 """

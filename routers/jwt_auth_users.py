@@ -5,19 +5,19 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 from datetime import datetime, timedelta
 
-# Algoritmo que define la firma de los tokens de acceso
+# Algorithm the defines the access token signature
 ALGORITHM = "HS256"
 ACCESS_TOKEN_DURATION = 1
-# Semilla que se utiliza para asegurar aún mas el token mediante una firma.
-# Si la firma no es válida, el token podría haber sido modificado, por lo tanto se desecha.
+# Seed used to further secure the token through a signature.
+# If the signature is invalid, the token could have been modified. Hence, it is discarded. 
 SECRET = "d172ca90107b2cca89ee7e75dad3bdb74d9d56511b3b30be2238c903b03ae2fe"
 
 router = APIRouter(tags=["JWT"])
 
 oauth2 = OAuth2PasswordBearer(tokenUrl="login")
 
-# Algoritmo que utilizaremos para encriptar las contraseñas en un hash.
-# Requiere instalar passlib[bcrypt]
+# Algorithm implemented to encrypt passwords into a hash.
+# Install passlib[bcrypt] required.
 crypt = CryptContext(schemes=["bcrypt"])
 
 class User(BaseModel):
@@ -51,7 +51,7 @@ def search_user_db(username: str):
         return UserDB(**users_db[username])
     
 """
-Dependencia para buscar el ususario realizando una desencriptación.
+Dependency that looks for an user performing a decryption
 """
 async def auth_user(token: str = Depends(oauth2)):
 
@@ -71,7 +71,7 @@ async def auth_user(token: str = Depends(oauth2)):
     return search_user_db(username)
 
 """
-Depende del usuario desencriptado. Además, valida si está inactivo o no.
+It depends on the decrypted user. Also, it validates whether is active or not.
 """
 async def current_user(user: str = Depends(auth_user)):
 
@@ -93,23 +93,22 @@ async def login(form: OAuth2PasswordRequestForm= Depends()):
     
     user = search_user_db(form.username)
 
-    # Verifica que la contraseña encriptada de la base de datos se corresponda con 
-    # la contraseña del request body
+    # Check if the encryted password in the bd matches the one in the request body
     if not crypt.verify(form.password, user.password):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
             detail="La contraseña no es correcta")
 
     """
-    El concepto de access token requiere de un tiempo limite de uso de ese token. 
-    Una vez alcanzado ese tiempo límite será necesario solicitar otro token. 
+    An access token requires a limited time of use. Once reached that time, 
+    it is necessary to request another one.
     """
     access_token = {
         "sub": user.username,
         "exp": datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_DURATION)
         }
     
-    # Retornamos el ccess_token encriptado
+    # Return the encrypted access token
     return {
         "access_token": jwt.encode(access_token, key=SECRET, algorithm=ALGORITHM),
         "token_type": "bearer"}
@@ -119,11 +118,11 @@ async def me(user: User= Depends(current_user)):
     return user
 
 """
-En términos generales:
-1. Importamos las librerías: jwt, CryptContext.
-2. Definimos el algorítmo con el que encriptaremos el token, el tiempo límite de 
-   validez del mismo y la semilla con la que firmaremos el token.
-3. Definimos la funcion ´login´, en donde verificaremos el usuario y la contraseña 
-   encriptada y nos devolverá el token encriptado.
-4. Definimos la función ´me´, 
+To sum up:
+1. Import classes: jwt, CryptContext.
+2. define the algorithm with which we will encrypt the token, the token's 
+   expiration time, and the seed with which we will sign the token.
+3. Define the ´login´ function, where we will verify the user and the 
+   encrypted password and it will return the encrypted token.
+4. Define the ´me´ function.
 """
